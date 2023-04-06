@@ -1,0 +1,15 @@
+{{define "index/home"}}
+<h1>WebApp 0.1&beta;</h1>
+<sub> (c) 2023 Michael Leimenmeier</sub>
+
+{{ if .CurrentUser }}
+<p>
+    <strong> WebApp </strong> dient ...
+</p>
+{{ else }}
+    <p>
+        WebApp ist kein &ouml;ffentlicher Service, sondern steht nur einem dedizierten Personenkreis zur
+        Verf&uuml;gung. Sollten sie nicht zur Nutzung eingeladen worden sein verlassen sie bitte diese Seite.
+    </p>
+{{ end }}
+{{end}}

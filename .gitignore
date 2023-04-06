@@ -1,0 +1,5 @@
+.idea
+assets/css
+assets/js
+data/*
+go.sum
