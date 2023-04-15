@@ -3,3 +3,4 @@ assets/css
 assets/js
 data/*
 go.sum
+config.yaml

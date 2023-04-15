@@ -1,29 +1,20 @@
 {{define "users/edit"}}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <h1>Accountdaten bearbeiten</h1>
         {{ with .Error }}
         <div class="alert error">
             {{.}}
         </div>
         {{end}}
-<!--        {{ if .Error }}-->
-<!--        <p class="text-danger">{{.Error}}</p>-->
-<!--        {{end}}-->
+
         <form action="/account" method="post">
-            <div class="form-group">
-                <label for="newEmail">Email</label>
-                <input type="text" name="email" value="{{ .User.Email }}" id="newEmail" class="form-control">
-            </div>
-            <h2>Passwort &auml;ndern <small>optional</small></h2>
-            <div class="form-group">
-                <label for="currentPassword">Aktuelles Passwort</label>
-                <input type="password" name="password" id="currentPassword" class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="newPassword">Neues Passwort</label>
-                <input type="password" name="password" id="newPassword" class="form-control">
-            </div>
+            <label for="newEmail">Email</label>
+            <input type="email" name="email" value="{{ .User.Email }}" id="newEmail" class="form-control" autofocus>
+            <h1>Passwort &auml;ndern <small>optional</small></h1>
+            <label for="currentPassword">Aktuelles Passwort</label>
+            <input type="password" name="password" id="currentPassword" class="form-control">
+            <label for="newPassword">Neues Passwort</label>
+            <input type="password" name="password" id="newPassword" class="form-control">
             <input type="submit" value="Speichern" class="btn btn-primary">
         </form>
     </div>

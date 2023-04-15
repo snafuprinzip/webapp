@@ -1,4 +1,4 @@
-package main
+package webappskeleton
 
 import (
 	"fmt"

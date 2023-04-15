@@ -1,4 +1,4 @@
-package main
+package webapp
 
 import (
 	"database/sql"
@@ -38,7 +38,7 @@ type DBSessionStore struct {
 	db *sql.DB
 }
 
-var globalSessionStore SessionStore // Session Database
+var GlobalSessionStore SessionStore // Session Database
 
 func NewSession(w http.ResponseWriter) *Session {
 	expiry := time.Now().Add(sessionDuration)
@@ -64,9 +64,9 @@ func RequestSession(r *http.Request) *Session {
 		return nil
 	}
 
-	session, err := globalSessionStore.Find(cookie.Value)
+	session, err := GlobalSessionStore.Find(cookie.Value)
 	if err != nil {
-		log.Fatalf("Error accessing global session store: %s\n", err)
+		log.Fatalf("Error accessing Global session store: %s\n", err)
 	}
 
 	if session == nil {
@@ -74,7 +74,7 @@ func RequestSession(r *http.Request) *Session {
 	}
 
 	if session.Expired() {
-		globalSessionStore.Delete(session)
+		GlobalSessionStore.Delete(session)
 		return nil
 	}
 
@@ -91,10 +91,10 @@ func RequestUser(r *http.Request) *User {
 		return nil
 	}
 
-	user, err := globalUserStore.Find(session.UserID)
+	user, err := GlobalUserStore.Find(session.UserID)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Fatalf("Error accessing global user store: %s\n", err)
+			log.Fatalf("Error accessing Global user store: %s\n", err)
 		}
 	}
 
@@ -128,7 +128,7 @@ func FindOrCreateSession(w http.ResponseWriter, r *http.Request) *Session {
 func HandleSessionDestroy(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	session := RequestSession(r)
 	if session != nil {
-		err := globalSessionStore.Delete(session)
+		err := GlobalSessionStore.Delete(session)
 		if err != nil {
 			log.Fatalf("Error deleting session from glocal session store: %s\n", err)
 		}
@@ -139,7 +139,8 @@ func HandleSessionDestroy(w http.ResponseWriter, r *http.Request, _ httprouter.P
 func HandleSessionNew(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	next := r.URL.Query().Get("next")
 	RenderTemplate(w, r, "sessions/new", map[string]interface{}{
-		"Next": next,
+		"Pagetitle": "Login",
+		"Next":      next,
 	})
 }
 
@@ -154,9 +155,10 @@ func HandleSessionCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 	if err != nil {
 		if IsValidationError(err) {
 			RenderTemplate(w, r, "sessions/new", map[string]interface{}{
-				"User":  user,
-				"Error": err,
-				"Next":  next,
+				"Pagetitle": "Login",
+				"User":      user,
+				"Error":     err,
+				"Next":      next,
 			})
 			return
 		}
@@ -166,9 +168,9 @@ func HandleSessionCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 	// find an existing session for the now authenticated user or create a new one
 	session := FindOrCreateSession(w, r)
 	session.UserID = user.ID
-	err = globalSessionStore.Save(session)
+	err = GlobalSessionStore.Save(session)
 	if err != nil {
-		log.Fatalf("Error adding new session to global session store: %s\n", err)
+		log.Fatalf("Error adding new session to Global session store: %s\n", err)
 	}
 
 	if next == "" {
@@ -245,13 +247,13 @@ func NewDBSessionStore() SessionStore {
 		log.Fatalf("Unable to read sql schema for the sessions table: %s\n", err)
 	}
 
-	_, err = globalMySQLDB.Exec(string(schema))
+	_, err = GlobalMySQLDB.Exec(string(schema))
 	if err != nil {
 		log.Fatalf("Unable to create schema in database: %s\n", err)
 	}
 
 	return &DBSessionStore{
-		db: globalMySQLDB,
+		db: GlobalMySQLDB,
 	}
 }
 

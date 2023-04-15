@@ -1,4 +1,4 @@
-package main
+package webapp
 
 import (
 	"database/sql"
@@ -45,8 +45,8 @@ const (
 	userIDLength   = 16
 )
 
-// globalUserStore is the global Database of users
-var globalUserStore UserStore
+// GlobalUserStore is the Global Database of users
+var GlobalUserStore UserStore
 
 // NewUser creates a new User and encrypts his password
 func NewUser(username, email, password string) (User, error) {
@@ -72,7 +72,7 @@ func NewUser(username, email, password string) (User, error) {
 	}
 
 	// check if username exists
-	existingUser, err := globalUserStore.FindByUsername(username)
+	existingUser, err := GlobalUserStore.FindByUsername(username)
 	if err != nil {
 		return user, err
 	}
@@ -81,7 +81,7 @@ func NewUser(username, email, password string) (User, error) {
 	}
 
 	// check if email exists
-	existingUser, err = globalUserStore.FindByEmail(email)
+	existingUser, err = GlobalUserStore.FindByEmail(email)
 	if err != nil {
 		return user, err
 	}
@@ -106,7 +106,7 @@ func FindUser(username, password string) (*User, error) {
 	}
 
 	// find user or return dummy with error message if it fails
-	existingUser, err := globalUserStore.FindByUsername(username)
+	existingUser, err := GlobalUserStore.FindByUsername(username)
 	if err != nil {
 		return out, err
 	}
@@ -131,7 +131,7 @@ func UpdateUser(user *User, email, currentPassword, newPassword string) (User, e
 	out.Email = email
 
 	// Check if email is already in use by another user
-	existingUser, err := globalUserStore.FindByEmail(email)
+	existingUser, err := GlobalUserStore.FindByEmail(email)
 	if err != nil {
 		return out, err
 	}
@@ -174,9 +174,11 @@ func UpdateUser(user *User, email, currentPassword, newPassword string) (User, e
 
 // HandleUserNew shows the user registration page
 // (GET /registration)
-func HandleUserNew(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func HandleUserNew(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Display Home Page
-	RenderTemplate(w, r, "users/new", nil)
+	RenderTemplate(w, r, "users/new", map[string]interface{}{
+		"Pagetitle": "Register User",
+	})
 }
 
 // HandleUserCreate takes the form values from the registration page and creates a new user
@@ -192,8 +194,9 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, params httprouter.
 	if err != nil {
 		if IsValidationError(err) {
 			RenderTemplate(w, r, "users/new", map[string]interface{}{
-				"Error": err.Error(),
-				"User":  user,
+				"Pagetitle": "Register User",
+				"Error":     err.Error(),
+				"User":      user,
 			})
 			return
 		}
@@ -201,7 +204,7 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, params httprouter.
 	}
 
 	// save user
-	err = globalUserStore.Save(&user)
+	err = GlobalUserStore.Save(&user)
 	if err != nil {
 		log.Fatalf("Unable to save user info: %s\n", err)
 	}
@@ -209,13 +212,13 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, params httprouter.
 	// create a new session
 	session := NewSession(w)
 	session.UserID = user.ID
-	fmt.Println(globalSessionStore)
+	fmt.Println(GlobalSessionStore)
 
-	err = globalSessionStore.Save(session)
+	err = GlobalSessionStore.Save(session)
 	if err != nil {
 		log.Fatalf("Unable to save session info: %s\n", err)
 	}
-	fmt.Println(globalSessionStore)
+	fmt.Println(GlobalSessionStore)
 
 	// redirect back to / with status message
 	http.Redirect(w, r, "/?flash=User+created", http.StatusFound)
@@ -226,7 +229,8 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, params httprouter.
 func HandleUserEdit(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	user := RequestUser(r)
 	RenderTemplate(w, r, "users/edit", map[string]interface{}{
-		"User": user,
+		"Pagetitle": "Edit User",
+		"User":      user,
 	})
 }
 
@@ -243,20 +247,21 @@ func HandleUserUpdate(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	if err != nil {
 		if IsValidationError(err) {
 			RenderTemplate(w, r, "users/edit", map[string]interface{}{
-				"User":  user,
-				"Error": err.Error(),
+				"Pagetitle": "Edit User",
+				"User":      user,
+				"Error":     err.Error(),
 			})
 			return
 		}
 		log.Fatalf("Error updating user: %s\n", err)
 	}
 
-	err = globalUserStore.Save(currentUser)
+	err = GlobalUserStore.Save(currentUser)
 	if err != nil {
-		log.Fatalf("Error updating user in global user store: %s\n", err)
+		log.Fatalf("Error updating user in Global user store: %s\n", err)
 	}
 
-	http.Redirect(w, r, "/account?flash=Benutzer+aktualisiert", http.StatusFound)
+	http.Redirect(w, r, "/account?flash=user+updated", http.StatusFound)
 }
 
 /****************************************
@@ -288,7 +293,7 @@ func NewFileUserStore(filename string) (*FileUserStore, error) {
 	return store, nil
 }
 
-// Save adds a new user and saves the globalUserStore to the Filesystem
+// Save adds a new user and saves the GlobalUserStore to the Filesystem
 func (store FileUserStore) Save(user *User) error {
 	store.Users[user.ID] = *user
 
@@ -352,13 +357,13 @@ func NewDBUserStore() UserStore {
 		log.Fatalf("Unable to read sql schema for the users table: %s\n", err)
 	}
 
-	_, err = globalMySQLDB.Exec(string(schema))
+	_, err = GlobalMySQLDB.Exec(string(schema))
 	if err != nil {
 		log.Fatalf("Unable to create schema in database: %s\n", err)
 	}
 
 	return &DBUserStore{
-		db: globalMySQLDB,
+		db: GlobalMySQLDB,
 	}
 }
 

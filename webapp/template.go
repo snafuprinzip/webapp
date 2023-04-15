@@ -1,8 +1,9 @@
-package main
+package webapp
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/snafuprinzip/webappskeleton"
 	"html/template"
 	"net/http"
 )
@@ -43,7 +44,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 	}
 
 	data["CurrentUser"] = RequestUser(r)
-	data["OpenRegistration"] = Config.OpenRegistration
+	data["OpenRegistration"] = webappskeleton.Config.OpenRegistration
 	data["Flash"] = r.URL.Query().Get("flash")
 
 	funcs := template.FuncMap{

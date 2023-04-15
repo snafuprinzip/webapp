@@ -1,4 +1,4 @@
-module WebApp
+module github.com/snafuprinzip/webappskeleton
 
 go 1.20
 
