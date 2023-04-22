@@ -1,0 +1,12 @@
+{{define "de/sessions/destroy"}}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h1>Abgemeldet</h1>
+    {{ if .Error }}
+    <p class="text-danger">{{.Error}}</p>
+    {{end}}
+    <p>Vielen Dank, sie sind nun abgemeldet.</p>
+    <p><a href="/login">Anmeldung</a></p>
+  </div>
+</div>
+{{end}}

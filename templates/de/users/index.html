@@ -1,0 +1,40 @@
+{{ define "de/users/index" }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="/assets/css/webapp.css">
+<div class="row">
+    {{ if .Users }}
+    <div class="card border-0 shadow">
+        <div class="card-body p-5">
+            <h1>Users
+                <a href="/users/?format=csv" class="btn buttonaction btn-secondary btn-sm rounded-0" role="button" data-toggle="tooltip" data-placement="top" title="Als CSV exportieren">
+                    <i class="fa fa-table"></i>
+                </a>
+            </h1>
+            <!-- Responsive table -->
+            <div class="table-responsive">
+                <table class="table m-0">
+                    <thead>
+                    <tr>
+                        <th scope="col" onclick="getData(0)">Benutzer ID</th>
+                        <th scope="col" onclick="getData(1)">Benutzername</th>
+                        <th scope="col" onclick="getData(2)">Email</th>
+                        <th scope="col" onclick="getData(3)">Sitzungen</th>
+                        <th scope="col">
+                            <a href="/register" class="btn buttonaction btn-primary btn-sm rounded-0" role="button" data-toggle="tooltip" data-placement="top" title="Hinzuf&uuml;gen">
+                                <i class="fa fa-plus"></i>
+                            </a>
+                        </th>
+                    </tr>
+                    </thead>
+                    <script src="/assets/js/usersindex.js"></script>
+                    <tbody id="userslist">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ else }}
+    <h3>Keine Benutzer vorhanden.</h3>
+    {{end}}
+</div>
+{{end}}

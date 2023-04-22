@@ -1,0 +1,11 @@
+{{define "en/index/home"}}
+{{ if .CurrentUser }}
+<p>
+    <strong> WebApp </strong> is ...
+</p>
+{{ else }}
+    <p>
+        WebApp is not a public service! Please leave immediately if you haven't been invited.
+    </p>
+{{ end }}
+{{end}}

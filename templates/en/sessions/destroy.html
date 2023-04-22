@@ -1,0 +1,12 @@
+{{define "en/sessions/destroy"}}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h1>Signed off</h1>
+    {{ if .Error }}
+    <p class="text-danger">{{.Error}}</p>
+    {{end}}
+    <p>Thank you, you have now signed off.</p>
+    <p><a href="/login">Sign on</a></p>
+  </div>
+</div>
+{{end}}

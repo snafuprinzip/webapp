@@ -1,0 +1,18 @@
+{{define "en/sessions/new"}}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        {{ if .Error }}
+        <p class="text-danger">{{.Error}}</p>
+        {{end}}
+
+        <form action="/login" method="post">
+            <label for="newUsername">Username</label>
+            <input type="text" name="username" value="{{ .User.Username }}" id="newUsername" class="form-control" autofocus>
+            <label for="newPassword">Password</label>
+            <input type="password" name="password" id="newPassword" class="form-control">
+            <input type="submit" value="Register" class="btn btn-primary">
+            <input type="hidden" name="next" value="{{.Next}}">
+        </form>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,24 @@
+{{define "en/users/edit"}}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        {{ with .Error }}
+        <div class="alert error">
+            {{.}}
+        </div>
+        {{end}}
+
+        <form action="/account" method="post">
+            <label for="newEmail">Email</label>
+            <input type="email" name="email" value="{{ .User.Email }}" id="newEmail" class="form-control" autofocus>
+            <fieldset>
+                <legend>Change Password <small>optional</small></legend>
+                <label for="currentPassword">Current Password</label>
+                <input type="password" name="password" id="currentPassword" class="form-control">
+                <label for="newPassword">New Password</label>
+                <input type="password" name="password" id="newPassword" class="form-control">
+            </fieldset>
+            <input type="submit" value="Save" class="btn btn-primary">
+        </form>
+    </div>
+</div>
+{{end}}
