@@ -1,11 +1,10 @@
-package webappskeleton
+package webapp
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"log"
 	"os"
-
-	"github.com/go-yaml/yaml"
 )
 
 var (
@@ -24,7 +23,7 @@ func ReadConfig(filename string) error {
 	if err != nil {
 		log.Printf("%s\n", err)
 		log.Printf("Unable to open configuration file for reading.\nUsing default configuration\n")
-		Config = &ConfigStruct{BindAddress: ":3000", DataDirectory: "./data/"}
+		Config = &ConfigStruct{BindAddress: ":3000", DataDirectory: "./data/", OpenRegistration: true}
 		Config.Save(filename)
 		return err
 	}

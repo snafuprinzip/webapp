@@ -1,62 +1,103 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="{{ .Language }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/bootstrap.css">
-    <link rel="stylesheet" href="/assets/webapp.css">
+    <link rel="stylesheet" href="/assets/css/webapp.css">
     <script src="/assets/js/bootstrap.bundle.js"></script>
-    <title>WebApp</title>
+    <title>{{ .AppName }}</title>
   </head>
 
   <body>
     <!--  <nav class="navbar navbar-expand-lg bg-body-secondary justify-content-lg-end header" role="navigation">-->
     <nav class="navbar navbar-expand-lg justify-content-lg-end" role="navigation">
       <div class="container-fluid">
-        <a class="navbar-brand" href="/"><img src="/assets/images/WebAppLogo.png" size="25%" style="width: 150px;" alt="WebApp"></a>
+        <a class="navbar-brand" href="/"><img src="/assets/images/logo.png" size="25%" style="width: 150px;" alt="WebApp"></a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
                 aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        {{if .CurrentUser}}
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link active" href="/sublink">Men&uuml;punkt 1</a>
-            </li>
-          </ul>
-          <div class="navbar ms-auto">
-            <ul class="navbar-nav">
-              <li class="nav-item">
-                <a class="nav-item nav-link" href="/settings">Einstellungen</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-item nav-link" href="/account">Account</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-item nav-link" href="/signout">Abmelden</a>
-              </li>
-            </ul>
-          </div>
-        {{else}}
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link active" href="#">Home</a>
-            </li>
-          </ul>
-          <div class="navbar ms-auto">
-            <ul class="navbar-nav">
-              <li class="nav-item">
-                <a class="nav-item nav-link" href="/login">Anmelden</a>
-              </li>
-              {{ if .OpenRegistration }}
+          {{ if eq .Language "de" }}
+            {{if .CurrentUser}}
+              <ul class="navbar-nav">
                 <li class="nav-item">
-                  <a class="nav-item nav-link" href="/register">Registrieren</a>
+                  <a class="nav-link active" href="/sublink">Men&uuml;punkt 1</a>
                 </li>
-              {{ end }}
-            </ul>
-          </div>
-        {{end}}
+              </ul>
+              <div class="navbar ms-auto">
+                <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-item nav-link" href="/settings">Einstellungen</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-item nav-link" href="/account">Account</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-item nav-link" href="/signout">Abmelden</a>
+                  </li>
+                </ul>
+              </div>
+            {{else}}
+              <ul class="navbar-nav">
+                <li class="nav-item">
+                  <a class="nav-link active" href="#">Home</a>
+                </li>
+              </ul>
+              <div class="navbar ms-auto">
+                <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-item nav-link" href="/login">Anmelden</a>
+                  </li>
+                  {{ if .OpenRegistration }}
+                    <li class="nav-item">
+                      <a class="nav-item nav-link" href="/register">Registrieren</a>
+                    </li>
+                  {{ end }}
+                </ul>
+              </div>
+            {{end}}
+          {{ else }} <!-- language = "en" -->
+            {{if .CurrentUser}}
+              <ul class="navbar-nav">
+                <li class="nav-item">
+                  <a class="nav-link active" href="/sublink">Menuitem 1</a>
+                </li>
+              </ul>
+              <div class="navbar ms-auto">
+                <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-item nav-link" href="/settings">Settings</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-item nav-link" href="/account">Account</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-item nav-link" href="/signout">Sign out</a>
+                  </li>
+                </ul>
+              </div>
+            {{else}}
+              <ul class="navbar-nav">
+                <li class="nav-item">
+                  <a class="nav-link active" href="#">Home</a>
+                </li>
+              </ul>
+              <div class="navbar ms-auto">
+                <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-item nav-link" href="/login">Sign in</a>
+                  </li>
+                  {{ if .OpenRegistration }}
+                    <li class="nav-item">
+                      <a class="nav-item nav-link" href="/register">Register</a>
+                    </li>
+                  {{ end }}
+                </ul>
+              </div>
+            {{end}}
+          {{ end }}
         </div>
       </div> <!-- container-fluid -->
     </nav>

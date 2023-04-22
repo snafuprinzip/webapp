@@ -1,6 +1,6 @@
 .idea
-assets/css
-assets/js
+assets/css/bootstrap*
+assets/js/bootstrap*
 data/*
 go.sum
-config.yaml
+config/config.yaml
