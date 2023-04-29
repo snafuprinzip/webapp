@@ -12,9 +12,9 @@ import (
 )
 
 type Session struct {
-	ID     string
-	UserID string
-	Expiry time.Time
+	ID     string    `json:"id" yaml:"id"`
+	UserID string    `json:"userID" yaml:"userID"`
+	Expiry time.Time `json:"expiry" yaml:"expiry"`
 }
 
 const (
@@ -107,7 +107,7 @@ func RequestUser(r *http.Request) *User {
 // IsAdmin checks if the current user is logged in with an admin account
 func IsAdmin(r *http.Request) bool {
 	user := RequestUser(r)
-	if user != nil && user.ID == "admin" && user.Username == "admin" {
+	if user != nil && user.ID == "admin" {
 		return true
 	}
 	return false
@@ -379,7 +379,7 @@ func (store DBSessionStore) Delete(session *Session) error {
 		session.ID,
 	)
 	if err != nil {
-		log.Println(row)
+		log.Println(row.RowsAffected())
 	}
 
 	return err

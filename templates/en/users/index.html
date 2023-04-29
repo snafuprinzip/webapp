@@ -1,4 +1,4 @@
-{{ define "de/users/index" }}
+{{ define "en/users/index" }}
 <div class="row">
   {{ if .Users }}
   <div class="card border-0 shadow">
@@ -8,17 +8,17 @@
         <table class="table m-0">
           <thead>
           <tr>
-            <th scope="col" onclick="getData('id')">Benutzer ID</th>
-            <th scope="col" onclick="getData('name')">Benutzername</th>
+            <th scope="col" onclick="getData('id')">User ID</th>
+            <th scope="col" onclick="getData('name')">Username</th>
             <th scope="col" onclick="getData('email')">Email</th>
-            <th scope="col" onclick="getData('sessions')">Sitzungen</th>
+            <th scope="col" onclick="getData('sessions')">Sessions</th>
             <th scope="col">
               <ul class="list-inline m-0">
                 <li>
-                  <a href="/register" class="btn buttonaction btn-primary btn-sm rounded-0" role="button" data-toggle="tooltip" data-placement="top" title="Hinzuf&uuml;gen">
+                  <a href="/register" class="btn buttonaction btn-primary btn-sm rounded-0" role="button" data-toggle="tooltip" data-placement="top" title="Add User">
                     <i class="fa fa-plus"></i>
                   </a>
-                  <a href="/api/v1/users?format=csv" class="btn buttonaction btn-secondary btn-sm rounded-0" role="button" data-toggle="tooltip" data-placement="top" title="Als CSV exportieren">
+                  <a href="/api/v1/users?format=csv" class="btn buttonaction btn-secondary btn-sm rounded-0" role="button" data-toggle="tooltip" data-placement="top" title="Export CSV">
                     <i class="fa fa-table"></i>
                   </a>
                 </li>
@@ -27,7 +27,6 @@
           </tr>
           </thead>
           <script src="/assets/js/users_index.js"></script>
-          <script>setLanguage("de");</script>
           <tbody id="userslist">
           </tbody>
         </table>
@@ -35,7 +34,7 @@
     </div>
   </div>
   {{ else }}
-  <h3>Keine Benutzer vorhanden.</h3>
+  <h3>No users found.</h3>
   {{end}}
 </div>
 {{end}}

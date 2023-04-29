@@ -2,7 +2,6 @@ package webapp
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -36,93 +35,50 @@ var errorTemplate = `
 // templates is a collection of all files in a subdirectory of the templates/ directory
 var templates = template.Must(template.New("t").ParseGlob("templates/??/**/*.html"))
 
-// GetLanguageFromUser reads the given user's config and returns the language if it is available or "en" for english
-func GetLanguageFromUser(userid string) (string, error) {
-	var languageError string
-	var lang = "en"
-
-	conf, err := GlobalUserConfigStore.Find(userid)
-	if err != nil {
-		log.Fatalln("Unable to read from global userconfigs store:", err)
-	}
-	if conf != nil {
-		if IsLanguageAvailable(conf.Language) {
-			lang = conf.Language
-		} else {
-			languageError = "Configured language " + conf.Language + " is not available. Sorry!"
-			return "en", errors.New(languageError)
-		}
-	}
-
-	return lang, nil
-}
-
-// GetLanguageFromRequest reads the user's config from the current session and returns the language if it is available
-// or "en" for english
-func GetLanguageFromRequest(r *http.Request) (string, error) {
-	var lang = "en"
-
-	if r != nil {
-		user := RequestUser(r)
-		if user != nil {
-			conf, err := GlobalUserConfigStore.Find(user.ID)
-			if err != nil {
-				log.Fatalln("Unable to read from global userconfigs store:", err)
-			}
-			if conf != nil {
-				if IsLanguageAvailable(conf.Language) {
-					lang = conf.Language
-				} else {
-					return "en", errors.New("Configured language " + conf.Language + " is not available. Sorry!")
-				}
-			}
-		}
-	}
-
-	if r.URL.Query().Has("lang") {
-		l := r.URL.Query().Get("lang")[:2]
-		if IsLanguageAvailable(l) {
-			lang = l
-		} else {
-			return "en", errors.New("Requested language " + l + " is not available. Sorry!")
-		}
-	}
-	return lang, nil
-}
-
 // RenderTemplate picks a template by "path/name" as defined within the template and renders it for the
 // client browser
 func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
+	var languageError string
+	var darkmode string = "light"
+	var conf *UserConfig
+
 	if data == nil {
 		data = map[string]interface{}{}
 	}
 
-	var languageError string
-	language, err := GetLanguageFromRequest(r)
-	if err != nil {
-		languageError = fmt.Sprintf("%s", err)
-	}
-
 	user := RequestUser(r)
-	data["CurrentUser"] = user
+	if user != nil {
+		conf, _ = GlobalUserConfigStore.Find(RequestUser(r).ID)
+		if conf != nil {
+			if conf.DarkMode {
+				darkmode = "dark"
+			}
+		}
+	}
+	lang := GetLanguage("", r, nil)
+
+	data["CurrentUser"] = RequestUser(r)
 	data["OpenRegistration"] = Config.OpenRegistration
 	data["Flash"] = r.URL.Query().Get("flash") + languageError
-	data["Language"] = language
+	data["Language"] = lang
 	data["AdminAccount"] = IsAdmin(r)
 	data["AppName"] = appName
+	data["DarkMode"] = darkmode
+
+	idx := fmt.Sprintf("%v", data["Pagetitle"])
+	data["Headline"] = Pagetitles[idx][lang]
 
 	funcs := template.FuncMap{
 		"yield": func() (template.HTML, error) {
 			buf := bytes.NewBuffer(nil)
-			err := templates.ExecuteTemplate(buf, language+"/"+name, data)
+			err := templates.ExecuteTemplate(buf, lang+"/"+name, data)
 			return template.HTML(buf.String()), err
 		},
 	}
 
 	layoutClone, _ := layout.Clone()
 	layoutClone.Funcs(funcs)
-	err = layoutClone.Execute(w, data)
-
+	err := layoutClone.Execute(w, data)
 	if err != nil {
 		http.Error(
 			w,

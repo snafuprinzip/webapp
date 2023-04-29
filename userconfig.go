@@ -2,6 +2,7 @@ package webapp
 
 import (
 	"database/sql"
+	"encoding/json"
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/yaml.v3"
 	"log"
@@ -10,15 +11,16 @@ import (
 )
 
 type UserConfig struct {
-	UserID   string
-	Language string
-	DarkMode bool
+	UserID   string `json:"userID" yaml:"userID"`
+	Language string `json:"language" yaml:"language"`
+	DarkMode bool   `json:"darkMode" yaml:"darkMode"`
 }
 
 // UserConfigStore is an abstraction interface to allow multiple data sources to save user info to
 type UserConfigStore interface {
 	Find(string) (*UserConfig, error)
 	Save(*UserConfig) error
+	Delete(config *UserConfig) error
 }
 
 // FileUserConfigStore is an implementation of UserConfigStore to save user data to the filesystem
@@ -79,6 +81,44 @@ func UpdateUserConfig(userconfig *UserConfig, language string, darkmode bool) (U
 	return out, nil
 }
 
+// GetLanguage returns the language from the lang url parameter, the users config for the given userid or from
+// the current request r or "en" if both are not found
+func GetLanguage(userid string, r *http.Request, params httprouter.Params) string {
+	// if lang is set with the url it takes precedence
+	lang := params.ByName("lang")
+	if lang != "" {
+		return lang
+	}
+
+	// get user
+	var uid string
+	if userid != "" {
+		uid = userid
+	} else {
+		u := RequestUser(r)
+		if u != nil {
+			uid = u.ID
+		}
+	}
+
+	// get user config
+	if uid != "" {
+		set, err := GlobalUserConfigStore.Find(uid)
+		if err != nil {
+			log.Println("Can't find userconfig of user", uid, "in global user config store:", err)
+		}
+		if set != nil {
+			lang = set.Language
+		}
+	}
+
+	if lang != "" {
+		return lang
+	}
+
+	return "en"
+}
+
 /****************************************
 ***  Handler                          ***
 *****************************************/
@@ -91,7 +131,7 @@ func HandleUserConfigEdit(w http.ResponseWriter, r *http.Request, params httprou
 		*userconfig, _ = NewUserConfig(params.ByName("userid"), "en", false)
 	}
 	RenderTemplate(w, r, "userconfigs/edit", map[string]interface{}{
-		"Pagetitle":  "Edit Config",
+		"Pagetitle":  "EditSettings",
 		"UserConfig": userconfig,
 	})
 }
@@ -100,33 +140,63 @@ func HandleUserConfigEdit(w http.ResponseWriter, r *http.Request, params httprou
 // from the account information page
 // (POST /account)
 func HandleUserConfigUpdate(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	user := RequestUser(r)
+	if user == nil {
+		log.Fatal("User from session not found")
+	}
+
 	currentUserconfig, err := GlobalUserConfigStore.Find(params.ByName("userid"))
+	if currentUserconfig == nil {
+		conf, _ := NewUserConfig(user.ID, "en", false)
+		currentUserconfig = &conf
+	}
 	language := r.FormValue("language")
 	var darkmode bool
 
-	if r.FormValue("darkmode") == "true" {
+	if r.FormValue("darkmode") == "dark" {
 		darkmode = true
 	}
 
 	userconfig, err := UpdateUserConfig(currentUserconfig, language, darkmode)
 	if err != nil {
 		if IsValidationError(err) {
-			RenderTemplate(w, r, "users/edit", map[string]interface{}{
-				"Pagetitle":  "Edit UserConfig",
+			RenderTemplate(w, r, "userconfigs/edit", map[string]interface{}{
+				"Pagetitle":  "EditSettings",
 				"UserConfig": userconfig,
 				"Error":      err.Error(),
 			})
 			return
 		}
-		log.Fatalf("Error updating user: %s\n", err)
+		log.Fatalf("Error updating user config: %s\n", err)
 	}
 
 	err = GlobalUserConfigStore.Save(currentUserconfig)
 	if err != nil {
-		log.Fatalf("Error updating user in Global user store: %s\n", err)
+		log.Fatalf("Error updating user config in Global user config store: %s\n", err)
 	}
 
-	http.Redirect(w, r, "/account?flash=user+updated", http.StatusFound)
+	http.Redirect(w, r, "/?flash=settings+updated", http.StatusFound)
+}
+
+func HandleUserConfigGETv1(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	userid := params.ByName("id")
+	if userid == "" {
+		userid = RequestUser(r).ID
+	}
+
+	userconfig, err := GlobalUserConfigStore.Find(userid)
+	if err != nil {
+		*userconfig, _ = NewUserConfig(userid, "en", false)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	writer := json.NewEncoder(w)
+	writer.SetIndent("", "    ")
+	if err := writer.Encode(userconfig); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 /****************************************
@@ -134,7 +204,7 @@ func HandleUserConfigUpdate(w http.ResponseWriter, r *http.Request, params httpr
 *****************************************/
 
 /**********************************
-***  File UserConfig Store            ***
+***  File UserConfig Store      ***
 ***********************************/
 
 // NewFileUserConfigStore creates a new FileUserConfigStore under the given filename
@@ -192,6 +262,16 @@ func (store FileUserConfigStore) Find(userid string) (*UserConfig, error) {
 	return nil, nil
 }
 
+func (store *FileUserConfigStore) Delete(userconf *UserConfig) error {
+	delete(store.UserConfigs, userconf.UserID)
+	contents, err := yaml.Marshal(store)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(store.filename, contents, 0660)
+}
+
 /**********************************
 ***  DB UserConfig Store              ***
 ***********************************/
@@ -220,7 +300,7 @@ func (store DBUserConfigStore) Save(userconfig *UserConfig) error {
 	INSERT INTO userconfigs
 	    (userid, language, darkmode)
 	    VALUES ($1, $2, $3)
-	    ON CONFLICT DO UPDATE SET userid=$1, language=$2, darkmode=$3`,
+	    ON CONFLICT (userid) DO UPDATE SET language=excluded.language, darkmode=excluded.darkmode`,
 		userconfig.UserID,
 		userconfig.Language,
 		userconfig.DarkMode,
@@ -248,4 +328,17 @@ func (store DBUserConfigStore) Find(userid string) (*UserConfig, error) {
 		return nil, nil
 	}
 	return &userconfig, err
+}
+
+func (store DBUserConfigStore) Delete(userconfig *UserConfig) error {
+	row, err := store.db.Exec(
+		`
+		DELETE FROM userconfigs
+		WHERE userid = $1`,
+		userconfig.UserID,
+	)
+	if err != nil {
+		log.Println(row)
+	}
+	return err
 }

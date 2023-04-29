@@ -1,0 +1,4 @@
+bindAddress: :3001
+dbConnector: ""
+dataDirectory: ./data/
+openRegistration: true

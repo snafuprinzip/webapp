@@ -1,6 +1,7 @@
 .idea
-assets/css/bootstrap*
-assets/js/bootstrap*
 data/*
 go.sum
 config/config.yaml
+/assets/fontawesome
+/assets/bootstrap
+/assets/jquery

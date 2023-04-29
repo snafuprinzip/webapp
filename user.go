@@ -2,7 +2,9 @@ package webapp
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
@@ -15,11 +17,11 @@ import (
 
 // User contains the necessary data for a registered user of the web service
 type User struct {
-	ID             string
-	Username       string
-	Email          string
-	HashedPassword string
-	Sessions       []Session
+	ID             string    `json:"id" yaml:"id"`
+	Username       string    `json:"username" yaml:"username"`
+	Email          string    `json:"email" yaml:"email"`
+	HashedPassword string    `json:"hashedPassword" yaml:"hashedPassword"`
+	Sessions       []Session `json:"sessions" yaml:"sessions"`
 }
 
 // UserStore is an abstraction interface to allow multiple data sources to save user info to
@@ -29,6 +31,7 @@ type UserStore interface {
 	FindByEmail(string) (*User, error)
 	FindByUsername(string) (*User, error)
 	Save(*User) error
+	Delete(*User) error
 }
 
 // FileUserStore is an implementation of UserStore to save user data to the filesystem
@@ -89,7 +92,7 @@ func NewUser(username, email, password string) (User, error) {
 		Username: username,
 	}
 
-	lang, _ := GetLanguageFromUser(user.ID)
+	lang := GetLanguage(user.ID, nil, nil)
 
 	// check for empty form fields
 	if username == "" {
@@ -148,7 +151,7 @@ func FindUser(username, password string) (*User, error) {
 		return out, errCredentialsIncorrect["en"]
 	}
 
-	lang, _ := GetLanguageFromUser(existingUser.ID)
+	lang := GetLanguage(existingUser.ID, nil, nil)
 
 	// compare user + password combination if user has been found before
 	if bcrypt.CompareHashAndPassword(
@@ -174,7 +177,7 @@ func UpdateUser(user *User, email, currentPassword, newPassword string) (User, e
 		return out, err
 	}
 	if existingUser != nil {
-		lang, _ = GetLanguageFromUser(existingUser.ID)
+		lang = GetLanguage(existingUser.ID, nil, nil)
 	}
 	if existingUser != nil && existingUser.ID != user.ID {
 		return out, errEmailExists[lang]
@@ -253,13 +256,11 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	// create a new session
 	session := NewSession(w)
 	session.UserID = user.ID
-	fmt.Println(GlobalSessionStore)
 
 	err = GlobalSessionStore.Save(session)
 	if err != nil {
 		log.Fatalf("Unable to save session info: %s\n", err)
 	}
-	fmt.Println(GlobalSessionStore)
 
 	// redirect back to / with status message
 	http.Redirect(w, r, "/?flash=User+created", http.StatusFound)
@@ -326,7 +327,7 @@ func HandleUsersIndex(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	}
 
 	RenderTemplate(w, r, "users/index", map[string]interface{}{
-		"Pagetitle": "Users",
+		"Pagetitle": "ListUsers",
 		"Users":     users,
 	})
 }
@@ -351,14 +352,94 @@ func HandleUsersGETv1(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		log.Println("Unable to read from GlobalUserStore:", err)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	writer := json.NewEncoder(w)
-	writer.SetIndent("", "    ")
-	if err := writer.Encode(users); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	format := fmt.Sprint(r.URL.Query()["format"])
+	log.Printf("%T %v %s\n", format, format, format)
+
+	switch format {
+	case "[csv]":
+		var row []string
+		items := [][]string{
+			{"ID", "Username", "Email", "Sessions"},
+		}
+
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment;filename=users.csv")
+		w.WriteHeader(http.StatusOK)
+		writer := csv.NewWriter(w)
+		users, _ = GlobalUserStore.All()
+		for _, u := range users {
+			var sessions []string
+			for _, s := range u.Sessions {
+				sessions = append(sessions, s.ID)
+			}
+			row = []string{u.ID, u.Username, u.Email, strings.Join(sessions, "\n")}
+			items = append(items, row)
+		}
+		if err := writer.WriteAll(items); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case "[yaml]":
+		w.Header().Set("Content-Type", "text/yaml")
+		w.WriteHeader(http.StatusOK)
+		writer := yaml.NewEncoder(w)
+		if err := writer.Encode(users); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case "[xml]":
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusOK)
+		writer := xml.NewEncoder(w)
+		writer.Indent("", "    ")
+		if err := writer.Encode(users); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case "[json]":
+		fallthrough
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writer := json.NewEncoder(w)
+		writer.SetIndent("", "    ")
+		if err := writer.Encode(users); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func HandleUserDELETEv1(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	user, _ := GlobalUserStore.Find(params.ByName("id"))
+	if user == nil {
+		log.Println("No user found to delete")
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	if RequestUser(r).ID == user.ID || RequestUser(r).Username == "admin" {
+		for _, session := range user.Sessions {
+			err := GlobalSessionStore.Delete(&session)
+			if err != nil {
+				log.Println("Unable to delete session", session, ":", err)
+			}
+		}
+		userconf, _ := GlobalUserConfigStore.Find(user.ID)
+		if userconf != nil {
+			err := GlobalUserConfigStore.Delete(userconf)
+			if err != nil {
+				log.Println("Unable to delete user", user, ":", err)
+			}
+		}
+		err := GlobalUserStore.Delete(user)
+		if err != nil {
+			log.Println("Unable to delete user", user, ":", err)
+		}
+	} else {
+		log.Println("Access forbidden:", RequestUser(r).ID, "!=", user.ID, "|| admin !=", user.Username)
+		w.WriteHeader(http.StatusForbidden)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 /****************************************
@@ -450,6 +531,16 @@ func (store FileUserStore) FindByEmail(email string) (*User, error) {
 		}
 	}
 	return nil, nil
+}
+
+func (store *FileUserStore) Delete(user *User) error {
+	delete(store.Users, user.ID)
+	contents, err := yaml.Marshal(store)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(store.filename, contents, 0660)
 }
 
 /**********************************
@@ -603,4 +694,17 @@ func (store DBUserStore) FindByEmail(email string) (*User, error) {
 	}
 	user.Sessions, _ = GlobalSessionStore.FindByUser(user.ID)
 	return &user, err
+}
+
+func (store DBUserStore) Delete(user *User) error {
+	row, err := store.db.Exec(
+		`
+		DELETE FROM users
+		WHERE id = $1`,
+		user.ID,
+	)
+	if err != nil {
+		log.Println(row.RowsAffected())
+	}
+	return err
 }

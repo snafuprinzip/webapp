@@ -75,6 +75,7 @@ func main() {
 
 	// Create Admin account if needed
 	webapp.CreateAdminAccount()
+	webapp.ReadPagetitles()
 
 	// setup the public multiplexer
 	router := NewRouter()
@@ -93,10 +94,15 @@ func main() {
 	secureRouter.GET("/signout", webapp.HandleSessionDestroy)
 	secureRouter.GET("/account", webapp.HandleUserEdit)
 	secureRouter.POST("/account", webapp.HandleUserUpdate)
+	secureRouter.GET("/settings", webapp.HandleUserConfigEdit)
+	secureRouter.POST("/settings", webapp.HandleUserConfigUpdate)
+	secureRouter.GET("/api/v1/settings", webapp.HandleUserConfigGETv1)
 
 	adminRouter := NewRouter()
 	adminRouter.GET("/users", webapp.HandleUsersIndex)
 	adminRouter.GET("/api/v1/users", webapp.HandleUsersGETv1)
+	adminRouter.DELETE("/api/v1/users/:id", webapp.HandleUserDELETEv1)
+	adminRouter.GET("/api/v1/settings/:id", webapp.HandleUserConfigGETv1)
 
 	// add middleware handlers
 	middleware := webapp.Middleware{}
