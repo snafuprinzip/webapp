@@ -16,27 +16,6 @@ type UserConfig struct {
 	DarkMode bool   `json:"darkMode" yaml:"darkMode"`
 }
 
-// UserConfigStore is an abstraction interface to allow multiple data sources to save user info to
-type UserConfigStore interface {
-	Find(string) (*UserConfig, error)
-	Save(*UserConfig) error
-	Delete(config *UserConfig) error
-}
-
-// FileUserConfigStore is an implementation of UserConfigStore to save user data to the filesystem
-type FileUserConfigStore struct {
-	filename    string
-	UserConfigs map[string]UserConfig
-}
-
-// DBUserConfigStore is an implementation of UserConfigStore to save user data in the database
-type DBUserConfigStore struct {
-	db *sql.DB
-}
-
-// GlobalUserConfigStore is the Global Database of users
-var GlobalUserConfigStore UserConfigStore
-
 // NewUserConfig creates a new UserConfig
 func NewUserConfig(userid, language string, darkmode bool) (UserConfig, error) {
 	userconfig := UserConfig{
@@ -203,9 +182,25 @@ func HandleUserConfigGETv1(w http.ResponseWriter, r *http.Request, params httpro
 ***  Storage Backends                 ***
 *****************************************/
 
+// UserConfigStore is an abstraction interface to allow multiple data sources to save user info to
+type UserConfigStore interface {
+	Find(string) (*UserConfig, error)
+	Save(*UserConfig) error
+	Delete(config *UserConfig) error
+}
+
+// GlobalUserConfigStore is the Global Database of users
+var GlobalUserConfigStore UserConfigStore
+
 /**********************************
 ***  File UserConfig Store      ***
 ***********************************/
+
+// FileUserConfigStore is an implementation of UserConfigStore to save user data to the filesystem
+type FileUserConfigStore struct {
+	filename    string
+	UserConfigs map[string]UserConfig
+}
 
 // NewFileUserConfigStore creates a new FileUserConfigStore under the given filename
 func NewFileUserConfigStore(filename string) (*FileUserConfigStore, error) {
@@ -275,6 +270,11 @@ func (store *FileUserConfigStore) Delete(userconf *UserConfig) error {
 /**********************************
 ***  DB UserConfig Store              ***
 ***********************************/
+
+// DBUserConfigStore is an implementation of UserConfigStore to save user data in the database
+type DBUserConfigStore struct {
+	db *sql.DB
+}
 
 func NewDBUserConfigStore() UserConfigStore {
 	_, err := GlobalPostgresDB.Exec(`

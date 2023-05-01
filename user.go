@@ -24,35 +24,11 @@ type User struct {
 	Sessions       []Session `json:"sessions" yaml:"sessions"`
 }
 
-// UserStore is an abstraction interface to allow multiple data sources to save user info to
-type UserStore interface {
-	Find(string) (*User, error)
-	All() ([]User, error)
-	FindByEmail(string) (*User, error)
-	FindByUsername(string) (*User, error)
-	Save(*User) error
-	Delete(*User) error
-}
-
-// FileUserStore is an implementation of UserStore to save user data to the filesystem
-type FileUserStore struct {
-	filename string
-	Users    map[string]User
-}
-
-// DBUserStore is an implementation of UserStore to save user data in the database
-type DBUserStore struct {
-	db *sql.DB
-}
-
 const (
 	hashCost       = 10
 	passwordLength = 8
 	userIDLength   = 16
 )
-
-// GlobalUserStore is the Global Database of users
-var GlobalUserStore UserStore
 
 // CreateAdminAccount creates a superuser account for the application administration if none exists yet
 func CreateAdminAccount() {
@@ -164,11 +140,12 @@ func FindUser(username, password string) (*User, error) {
 }
 
 // UpdateUser updates the User's email address and, if the current password matches, the password
-func UpdateUser(user *User, email, currentPassword, newPassword string) (User, error) {
+func UpdateUser(user *User, username, email, currentPassword, newPassword string) (User, error) {
 	var lang string = "en"
 
 	// make a shallow copy of the user and set email
 	out := *user
+	out.Username = username
 	out.Email = email
 
 	// Check if email is already in use by another user
@@ -185,6 +162,7 @@ func UpdateUser(user *User, email, currentPassword, newPassword string) (User, e
 
 	// update email address
 	user.Email = email
+	user.Username = username
 
 	// don't update password if existing password is empty
 	if currentPassword == "" {
@@ -281,11 +259,12 @@ func HandleUserEdit(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 // (POST /account)
 func HandleUserUpdate(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	currentUser := RequestUser(r)
+	username := r.FormValue("username")
 	email := r.FormValue("email")
 	currentPassword := r.FormValue("currentPassword")
 	newPassword := r.FormValue("newPassword")
 
-	user, err := UpdateUser(currentUser, email, currentPassword, newPassword)
+	user, err := UpdateUser(currentUser, username, email, currentPassword, newPassword)
 	if err != nil {
 		if IsValidationError(err) {
 			RenderTemplate(w, r, "users/edit", map[string]interface{}{
@@ -446,9 +425,28 @@ func HandleUserDELETEv1(w http.ResponseWriter, r *http.Request, params httproute
 ***  Storage Backends                 ***
 *****************************************/
 
+// UserStore is an abstraction interface to allow multiple data sources to save user info to
+type UserStore interface {
+	Find(string) (*User, error)
+	All() ([]User, error)
+	FindByEmail(string) (*User, error)
+	FindByUsername(string) (*User, error)
+	Save(*User) error
+	Delete(*User) error
+}
+
+// GlobalUserStore is the Global Database of users
+var GlobalUserStore UserStore
+
 /**********************************
 ***  File User Store            ***
 ***********************************/
+
+// FileUserStore is an implementation of UserStore to save user data to the filesystem
+type FileUserStore struct {
+	filename string
+	Users    map[string]User
+}
 
 // NewFileUserStore creates a new FileUserStore under the given filename
 func NewFileUserStore(filename string) (*FileUserStore, error) {
@@ -546,6 +544,11 @@ func (store *FileUserStore) Delete(user *User) error {
 /**********************************
 ***  DB User Store              ***
 ***********************************/
+
+// DBUserStore is an implementation of UserStore to save user data in the database
+type DBUserStore struct {
+	db *sql.DB
+}
 
 func NewDBUserStore() UserStore {
 	_, err := GlobalPostgresDB.Exec(`

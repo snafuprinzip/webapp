@@ -22,24 +22,6 @@ const (
 	sessionIDLength = 20
 )
 
-type SessionStore interface {
-	Find(string) (*Session, error)
-	FindByUser(string) ([]Session, error)
-	Save(*Session) error
-	Delete(*Session) error
-}
-
-type FileSessionStore struct {
-	filename string
-	Sessions map[string]Session
-}
-
-type DBSessionStore struct {
-	db *sql.DB
-}
-
-var GlobalSessionStore SessionStore // Session Database
-
 func NewSession(w http.ResponseWriter) *Session {
 	expiry := time.Now().Add(sessionDuration)
 
@@ -210,9 +192,23 @@ func HandleSessionCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 ***  Storage Backends                 ***
 *****************************************/
 
+type SessionStore interface {
+	Find(string) (*Session, error)
+	FindByUser(string) ([]Session, error)
+	Save(*Session) error
+	Delete(*Session) error
+}
+
+var GlobalSessionStore SessionStore // Session Database
+
 /**********************************
 ***  File Session Store         ***
 ***********************************/
+
+type FileSessionStore struct {
+	filename string
+	Sessions map[string]Session
+}
 
 func NewFileSessionStore(name string) (*FileSessionStore, error) {
 	store := &FileSessionStore{
@@ -277,6 +273,10 @@ func (s *FileSessionStore) Delete(session *Session) error {
 /**********************************
 ***  DB Session Store           ***
 ***********************************/
+
+type DBSessionStore struct {
+	db *sql.DB
+}
 
 func NewDBSessionStore() SessionStore {
 	_, err := GlobalPostgresDB.Exec(`

@@ -8,8 +8,12 @@
         {{end}}
 
         <form action="/account" method="post">
-            <label for="newEmail">Email</label>
-            <input type="email" name="email" value="{{ .User.Email }}" id="newEmail" class="form-control" autofocus>
+            <fieldset>
+                <label for="newUsername">Benutzername</label>
+                <input type="text" name="username" value="{{ .User.Username }}" id="newUsername" class="form-control" autofocus>
+                <label for="newEmail">Email</label>
+                <input type="email" name="email" value="{{ .User.Email }}" id="newEmail" class="form-control">
+            </fieldset>
             <fieldset>
                 <legend>Passwort &auml;ndern <small>optional</small></legend>
                 <label for="currentPassword">Aktuelles Passwort</label>
