@@ -121,7 +121,7 @@ func HandleUserConfigEdit(w http.ResponseWriter, r *http.Request, params httprou
 func HandleUserConfigUpdate(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	user := RequestUser(r)
 	if user == nil {
-		log.Fatal("User from session not found")
+		Logln(FatalLevel, "User from session not found")
 	}
 
 	currentUserconfig, err := GlobalUserConfigStore.Find(params.ByName("userid"))
@@ -146,12 +146,12 @@ func HandleUserConfigUpdate(w http.ResponseWriter, r *http.Request, params httpr
 			})
 			return
 		}
-		log.Fatalf("Error updating user config: %s\n", err)
+		Logf(FatalLevel, "Error updating user config: %s\n", err)
 	}
 
 	err = GlobalUserConfigStore.Save(currentUserconfig)
 	if err != nil {
-		log.Fatalf("Error updating user config in Global user config store: %s\n", err)
+		Logf(FatalLevel, "Error updating user config in Global user config store: %s\n", err)
 	}
 
 	http.Redirect(w, r, "/?flash=settings+updated", http.StatusFound)
@@ -286,7 +286,7 @@ CREATE TABLE IF NOT EXISTS userconfigs (
 );
 `)
 	if err != nil {
-		log.Fatalf("Unable to create userconfigs table in database: %s\n", err)
+		Logf(FatalLevel, "Unable to create userconfigs table in database: %s\n", err)
 	}
 
 	return &DBUserConfigStore{

@@ -29,7 +29,7 @@ func main() {
 	// read configuration from configfile
 	if err := webapp.ReadConfig(configfile); err != nil {
 		if !os.IsNotExist(err) { // Error for non-existent config file has already been covered in ReadConfig
-			log.Printf("%s\n", err)
+			webapp.Logf(webapp.ErrorLevel, "%s\n", err)
 		}
 	}
 
@@ -71,11 +71,10 @@ func main() {
 		webapp.GlobalUserConfigStore = webapp.NewDBUserConfigStore()
 		webapp.GlobalSessionStore = webapp.NewDBSessionStore()
 	}
-	log.Println("Backend Storages created")
+	webapp.Logln(webapp.InfoLevel, "Backend Storages created")
 
 	// Create Admin account if needed
 	webapp.CreateAdminAccount()
-	webapp.ReadPagetitles()
 
 	// setup the public multiplexer
 	router := NewRouter()
@@ -88,12 +87,15 @@ func main() {
 	router.GET("/login", webapp.HandleSessionNew)
 	router.POST("/login", webapp.HandleSessionCreate)
 	router.ServeFiles("/assets/*filepath", http.Dir("assets/"))
+	router.ServeFiles("/3rdparty/*filepath", http.Dir("3rdparty/"))
 
 	// set up the mux for authenticated users
 	secureRouter := NewRouter()
 	secureRouter.GET("/signout", webapp.HandleSessionDestroy)
 	secureRouter.GET("/account", webapp.HandleUserEdit)
 	secureRouter.POST("/account", webapp.HandleUserUpdate)
+	secureRouter.GET("/users/:id", webapp.HandleUserEdit)
+	secureRouter.POST("/users/:id", webapp.HandleUserUpdate)
 	secureRouter.GET("/settings", webapp.HandleUserConfigEdit)
 	secureRouter.POST("/settings", webapp.HandleUserConfigUpdate)
 	secureRouter.GET("/api/v1/settings", webapp.HandleUserConfigGETv1)
@@ -113,6 +115,6 @@ func main() {
 	middleware.Add(adminRouter)
 
 	// listen and serve
-	log.Println("starting listener")
-	log.Fatal(http.ListenAndServe(webapp.Config.BindAddress, middleware))
+	webapp.Logln(webapp.InfoLevel, "starting listener on address", webapp.Config.BindAddress)
+	webapp.Logln(webapp.FatalLevel, http.ListenAndServe(webapp.Config.BindAddress, middleware))
 }

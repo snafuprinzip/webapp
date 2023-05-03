@@ -48,7 +48,7 @@ func RequestSession(r *http.Request) *Session {
 
 	session, err := GlobalSessionStore.Find(cookie.Value)
 	if err != nil {
-		log.Fatalf("Error accessing Global session store: %s\n", err)
+		Logf(FatalLevel, "Error accessing Global session store: %s\n", err)
 	}
 
 	if session == nil {
@@ -79,7 +79,7 @@ func RequestUser(r *http.Request) *User {
 	user, err := GlobalUserStore.Find(session.UserID)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Fatalf("Error accessing Global user store: %s\n", err)
+			Logf(FatalLevel, "Error accessing Global user store: %s\n", err)
 		}
 	}
 
@@ -138,7 +138,7 @@ func HandleSessionDestroy(w http.ResponseWriter, r *http.Request, _ httprouter.P
 	if session != nil {
 		err := GlobalSessionStore.Delete(session)
 		if err != nil {
-			log.Fatalf("Error deleting session from glocal session store: %s\n", err)
+			Logf(FatalLevel, "Error deleting session from glocal session store: %s\n", err)
 		}
 	}
 	RenderTemplate(w, r, "sessions/destroy", nil)
@@ -170,7 +170,7 @@ func HandleSessionCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 			})
 			return
 		}
-		log.Fatalf("Error finding user/password combination: %s\n", err)
+		Logf(FatalLevel, "Error finding user/password combination: %s\n", err)
 	}
 
 	// find an existing session for the now authenticated user or create a new one
@@ -178,7 +178,7 @@ func HandleSessionCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 	session.UserID = user.ID
 	err = GlobalSessionStore.Save(session)
 	if err != nil {
-		log.Fatalf("Error adding new session to Global session store: %s\n", err)
+		Logf(FatalLevel, "Error adding new session to Global session store: %s\n", err)
 	}
 
 	if next == "" {
@@ -242,7 +242,7 @@ func (s *FileSessionStore) Find(id string) (*Session, error) {
 func (s *FileSessionStore) FindByUser(userid string) ([]Session, error) {
 	var sessions []Session
 	for _, session := range s.Sessions {
-		log.Printf("session.UserID (%s) == userid (%s)\n", session.UserID, userid)
+		Logf(ErrorLevel, "session.UserID (%s) == userid (%s)\n", session.UserID, userid)
 		if session.UserID == userid {
 			sessions = append(sessions, session)
 		}
@@ -288,13 +288,13 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 `)
 	if err != nil {
-		log.Fatalf("Unable to create sessions table in database: %s\n", err)
+		Logf(FatalLevel, "Unable to create sessions table in database: %s\n", err)
 	}
 
 	_, err = GlobalPostgresDB.Exec(`
 CREATE INDEX IF NOT EXISTS userid_idx ON sessions( userid );`)
 	if err != nil {
-		log.Fatalf("Unable to create userid index in sessions table of the database: %s\n", err)
+		Logf(FatalLevel, "Unable to create userid index in sessions table of the database: %s\n", err)
 	}
 
 	return &DBSessionStore{

@@ -108,7 +108,7 @@ function getData(sorting) {
     const url = "/api/v1/users/";
     let request = new XMLHttpRequest();
 
-    console.log(sorting);
+    // console.log(sorting);
 
     request.open("GET", url);
     request.setRequestHeader("Accept", "application/json")
@@ -130,11 +130,11 @@ function getData(sorting) {
 
 function setLanguage(lang) {
     language = lang;
-    getData("name");
+    getData("id");
 }
 
 function initJS() {
-    getData();
+    getData("id");
 }
 
 document.addEventListener('DOMContentLoaded', initJS);

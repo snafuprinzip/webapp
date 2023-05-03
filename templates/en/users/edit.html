@@ -7,7 +7,7 @@
         </div>
         {{end}}
 
-        <form action="/account" method="post">
+        <form action="/users/{{ .User.ID }}" method="post">
             <fieldset>
                 <label for="newUsername">Username</label>
                 <input type="text" name="username" value="{{ .User.Username }}" id="newUsername" class="form-control" autofocus>

@@ -3,7 +3,6 @@ package webapp
 import (
 	"crypto/rand"
 	"fmt"
-	"log"
 )
 
 // idSource contains the character base used when generating a random identifier.
@@ -21,7 +20,7 @@ func GenerateID(prefix string, length int) string {
 	// Fill our array with random numbers
 	_, err := rand.Read(id)
 	if err != nil {
-		log.Fatalf("Unable to read random numbers: %s\n", err)
+		Logf(FatalLevel, "Unable to read random numbers: %s\n", err)
 	}
 
 	// Replace each random number with an alphanumeric value
@@ -40,7 +39,7 @@ func GenerateRandomPassword(length int) string {
 	// Fill our array with random numbers
 	_, err := rand.Read(id)
 	if err != nil {
-		log.Fatalf("Unable to read random numbers: %s\n", err)
+		Logf(FatalLevel, "Unable to read random numbers: %s\n", err)
 	}
 
 	// Replace each random number with an alphanumeric value

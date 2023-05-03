@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"os"
 )
@@ -66,7 +65,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 	data["DarkMode"] = darkmode
 
 	idx := fmt.Sprintf("%v", data["Pagetitle"])
-	data["Headline"] = Pagetitles[idx][lang]
+	data["Headline"] = LookupTranslation(r, "Title"+idx)
 
 	funcs := template.FuncMap{
 		"yield": func() (template.HTML, error) {
@@ -94,7 +93,7 @@ func IsLanguageAvailable(language string) bool {
 	if availableLanguages == nil {
 		entries, err := os.ReadDir("templates")
 		if err != nil {
-			log.Fatalln("Unable to access templates directory:", err)
+			Logln(FatalLevel, "Unable to access templates directory:", err)
 		}
 		for _, e := range entries {
 			if e.IsDir() {

@@ -20,7 +20,7 @@ type User struct {
 	ID             string    `json:"id" yaml:"id"`
 	Username       string    `json:"username" yaml:"username"`
 	Email          string    `json:"email" yaml:"email"`
-	HashedPassword string    `json:"hashedPassword" yaml:"hashedPassword"`
+	HashedPassword string    `json:"hashedPassword,omitempty" yaml:"hashedPassword,omitempty"`
 	Sessions       []Session `json:"sessions" yaml:"sessions"`
 }
 
@@ -35,14 +35,14 @@ func CreateAdminAccount() {
 	// Create a random admin user if none exists
 	admin, err := GlobalUserStore.Find("admin")
 	if err != nil {
-		log.Fatalf("Unable to read from global user store: %s\n", err)
+		Logf(FatalLevel, "Unable to read from global user store: %s\n", err)
 	}
 
 	if admin == nil {
 		password := GenerateRandomPassword(16)
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 		if err != nil {
-			log.Fatalf("Unable to generate admin password: %s\n", err)
+			Logf(FatalLevel, "Unable to generate admin password: %s\n", err)
 		}
 
 		admin = &User{
@@ -53,9 +53,9 @@ func CreateAdminAccount() {
 		}
 		err = GlobalUserStore.Save(admin)
 		if err != nil {
-			log.Fatalf("Unable to save admin password: %s\n", err)
+			Logf(FatalLevel, "Unable to save admin password: %s\n", err)
 		}
-		log.Printf("No Admin account found, creating a new one with the following credentials:\n"+
+		Logf(ErrorLevel, "No Admin account found, creating a new one with the following credentials:\n"+
 			"Username: admin\nPassword: %s\n\nPlease not these down and put it in a secure location.", password)
 	}
 }
@@ -216,7 +216,7 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	if err != nil {
 		if IsValidationError(err) {
 			RenderTemplate(w, r, "users/new", map[string]interface{}{
-				"Pagetitle": "Register User",
+				"Pagetitle": "NewUser",
 				"Error":     err.Error(),
 				"User":      user,
 			})
@@ -228,7 +228,7 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	// save user
 	err = GlobalUserStore.Save(&user)
 	if err != nil {
-		log.Fatalf("Unable to save user info: %s\n", err)
+		Logf(FatalLevel, "Unable to save user info: %s\n", err)
 	}
 
 	// create a new session
@@ -237,7 +237,7 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 
 	err = GlobalSessionStore.Save(session)
 	if err != nil {
-		log.Fatalf("Unable to save session info: %s\n", err)
+		Logf(FatalLevel, "Unable to save session info: %s\n", err)
 	}
 
 	// redirect back to / with status message
@@ -246,10 +246,30 @@ func HandleUserCreate(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 
 // HandleUserEdit shows the account information page to change email or password
 // (GET /account)
-func HandleUserEdit(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	user := RequestUser(r)
+func HandleUserEdit(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	var user *User
+	var err error
+	uid := params.ByName("id")
+	if uid == "" {
+		user = RequestUser(r)
+	} else {
+		user, err = GlobalUserStore.Find(uid)
+		if err != nil {
+			log.Println("User", uid, "not found:", err)
+			http.Redirect(w, r, "/?flash=user+not+found", http.StatusNotFound)
+			return
+		}
+	}
+
+	currentUser := RequestUser(r)
+	if user.ID != currentUser.ID && currentUser.ID != "admin" {
+		log.Println("Edit User", uid, "not allowed for user", currentUser.ID, currentUser.Username)
+		http.Redirect(w, r, "/?flash=edit+user+not+allowed", http.StatusForbidden)
+		return
+	}
+
 	RenderTemplate(w, r, "users/edit", map[string]interface{}{
-		"Pagetitle": "Edit User",
+		"Pagetitle": "EditUser",
 		"User":      user,
 	})
 }
@@ -257,32 +277,53 @@ func HandleUserEdit(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 // HandleUserUpdate updates the user information with the new email or password information
 // from the account information page
 // (POST /account)
-func HandleUserUpdate(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func HandleUserUpdate(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	var user *User
+	var err error
+	uid := params.ByName("id")
+	if uid == "" {
+		user = RequestUser(r)
+	} else {
+		user, err = GlobalUserStore.Find(uid)
+		if err != nil {
+			log.Println("User", uid, "not found:", err)
+			http.Redirect(w, r, "/?flash=user+not+found", http.StatusNotFound)
+			return
+		}
+	}
+
 	currentUser := RequestUser(r)
+	if user.ID != currentUser.ID && currentUser.ID != "admin" {
+		log.Println("Edit User", uid, "not allowed for user", currentUser.ID, currentUser.Username)
+		http.Redirect(w, r, "/?flash=edit+user+not+allowed", http.StatusForbidden)
+		return
+	}
+
 	username := r.FormValue("username")
 	email := r.FormValue("email")
 	currentPassword := r.FormValue("currentPassword")
 	newPassword := r.FormValue("newPassword")
 
-	user, err := UpdateUser(currentUser, username, email, currentPassword, newPassword)
+	u, err := UpdateUser(user, username, email, currentPassword, newPassword)
+	user = &u
 	if err != nil {
 		if IsValidationError(err) {
 			RenderTemplate(w, r, "users/edit", map[string]interface{}{
-				"Pagetitle": "Edit User",
+				"Pagetitle": "EditUser",
 				"User":      user,
 				"Error":     err.Error(),
 			})
 			return
 		}
-		log.Fatalf("Error updating user: %s\n", err)
+		Logf(FatalLevel, "Error updating user: %s\n", err)
 	}
 
-	err = GlobalUserStore.Save(currentUser)
+	err = GlobalUserStore.Save(user)
 	if err != nil {
-		log.Fatalf("Error updating user in Global user store: %s\n", err)
+		Logf(FatalLevel, "Error updating user in Global user store: %s\n", err)
 	}
 
-	http.Redirect(w, r, "/account?flash=user+updated", http.StatusFound)
+	http.Redirect(w, r, "/users/"+user.ID+"?flash=user+updated", http.StatusFound)
 }
 
 func HandleUsersIndex(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -332,8 +373,6 @@ func HandleUsersGETv1(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	}
 
 	format := fmt.Sprint(r.URL.Query()["format"])
-	log.Printf("%T %v %s\n", format, format, format)
-
 	switch format {
 	case "[csv]":
 		var row []string
@@ -486,9 +525,11 @@ func (store FileUserStore) Save(user *User) error {
 	return nil
 }
 
+// All returns  a list of all users, except the HashedPassword field
 func (store FileUserStore) All() ([]User, error) {
 	var userlist []User
 	for _, v := range store.Users {
+		v.HashedPassword = ""
 		userlist = append(userlist, v)
 	}
 	return userlist, nil
@@ -531,7 +572,7 @@ func (store FileUserStore) FindByEmail(email string) (*User, error) {
 	return nil, nil
 }
 
-func (store *FileUserStore) Delete(user *User) error {
+func (store FileUserStore) Delete(user *User) error {
 	delete(store.Users, user.ID)
 	contents, err := yaml.Marshal(store)
 	if err != nil {
@@ -561,19 +602,19 @@ CREATE TABLE IF NOT EXISTS users (
 );
 `)
 	if err != nil {
-		log.Fatalf("Unable to create users table in database: %s\n", err)
+		Logf(FatalLevel, "Unable to create users table in database: %s\n", err)
 	}
 
 	_, err = GlobalPostgresDB.Exec(`
 CREATE INDEX IF NOT EXISTS username_idx ON users( username );`)
 	if err != nil {
-		log.Fatalf("Unable to create users table username index in database: %s\n", err)
+		Logf(FatalLevel, "Unable to create users table username index in database: %s\n", err)
 	}
 
 	_, err = GlobalPostgresDB.Exec(`
 CREATE INDEX IF NOT EXISTS email_idx ON users( email );`)
 	if err != nil {
-		log.Fatalf("Unable to create users table email index in database: %s\n", err)
+		Logf(FatalLevel, "Unable to create users table email index in database: %s\n", err)
 	}
 
 	return &DBUserStore{
@@ -597,10 +638,11 @@ func (store DBUserStore) Save(user *User) error {
 	return err
 }
 
+// All returns  a list of all users, except the HashedPassword field
 func (store DBUserStore) All() ([]User, error) {
 	rows, err := store.db.Query(
 		`
-		SELECT id, username, email, password
+		SELECT id, username, email
 		FROM users
 		`,
 	)
@@ -615,7 +657,6 @@ func (store DBUserStore) All() ([]User, error) {
 			&user.ID,
 			&user.Username,
 			&user.Email,
-			&user.HashedPassword,
 		)
 		if err != nil {
 			return nil, err

@@ -1,7 +1,6 @@
 .idea
-data/*
+data/*.yaml
 go.sum
 config/config.yaml
-/assets/fontawesome
-/assets/bootstrap
-/assets/jquery
+3rdparty
+log

@@ -1,4 +1,5 @@
 bindAddress: :3001
 dbConnector: ""
-dataDirectory: ./data/
+dataDirectory: /data/
+logDirectory: /var/log/
 openRegistration: true
