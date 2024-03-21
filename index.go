@@ -13,6 +13,7 @@ var appName string
 func NewApp(name string) {
 	appName = name
 
+	log.Println("Creating data and log directories if they don't exist...")
 	if err := os.MkdirAll(path.Join(Config.DataDirectory, "i18n"), 0750); err != nil {
 		log.Println("error creating data directory", Config.DataDirectory, err)
 	}
@@ -21,8 +22,10 @@ func NewApp(name string) {
 	}
 
 	// set up multi-language support
+	log.Println("Setting up language translation...")
 	SetupTranslations()
 
+	log.Println("Setting up logging...")
 	SetupLogging()
 }
 

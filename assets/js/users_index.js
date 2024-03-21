@@ -10,12 +10,12 @@ const markup = (user, sessions, editLabel, deleteLabel, confirmationText) => {
                 <li>
                     <a href="/users/${user.id}" class="btn buttonaction btn-success btn-sm rounded-0"
                         role="button" data-toggle="tooltip" data-placement="top" title="${editLabel}">
-                        <i class="fa fa-edit"></i>
+                        <i class="fa-solid fa-pen"></i>
                     </a>
 <!--                    <a href="/userrm/${user.id}" onclick="deleteUser(${user.id})" class="btn buttonaction btn-danger btn-sm rounded-0"-->
                     <a onclick="deleteUser('${user.id}', '${confirmationText}')" class="btn buttonaction btn-danger btn-sm rounded-0"
                         id="delete${user.id}" role="button" data-toggle="tooltip" data-placement="top" title="${deleteLabel}">
-                        <i class="fa fa-trash"></i>
+                        <i class="fa-solid fa-trash"></i>
                     </a>
                 </li>            
             </ul>

@@ -2,6 +2,7 @@ package webapp
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -18,15 +19,18 @@ const (
 	FatalLevel
 )
 
+var Logfile *os.File
+
 func SetupLogging() {
 	logfile := path.Join(Config.LogDirectory, appName+".log")
-	f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	Logfile, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		Logf(FatalLevel, "error opening logfile: %v", err)
 	}
 	//defer f.Close()
+	multi := io.MultiWriter(Logfile, os.Stdout)
 
-	log.SetOutput(f)
+	log.SetOutput(multi)
 }
 
 func (l Loglevel) String() string {
@@ -73,7 +77,8 @@ func Logf(level Loglevel, format string, msg ...any) {
 		msg = append(msg, string(debug.Stack()))
 		log.Fatalf(format+"%s", msg...)
 	}
-	Logf(ErrorLevel, format, msg...)
+	log.Printf(format, msg...)
+	//Logf(ErrorLevel, format, msg...)
 }
 
 // Logln is a wrapper for log.Println or log.Fatalln if the log level is set to FatalLevel.

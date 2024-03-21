@@ -32,7 +32,7 @@ const (
 
 // CreateAdminAccount creates a superuser account for the application administration if none exists yet
 func CreateAdminAccount() {
-	// Create a random admin user if none exists
+	// Create admin user with random password if none exists
 	admin, err := GlobalUserStore.Find("admin")
 	if err != nil {
 		Logf(FatalLevel, "Unable to read from global user store: %s\n", err)
@@ -55,8 +55,8 @@ func CreateAdminAccount() {
 		if err != nil {
 			Logf(FatalLevel, "Unable to save admin password: %s\n", err)
 		}
-		Logf(ErrorLevel, "No Admin account found, creating a new one with the following credentials:\n"+
-			"Username: admin\nPassword: %s\n\nPlease not these down and put it in a secure location.", password)
+		Logf(InfoLevel, "No Admin account found, creating a new one with the following credentials:\n"+
+			"Username: admin\nPassword: %s\n\nPlease note these down and put them in a secure location.", password)
 	}
 }
 

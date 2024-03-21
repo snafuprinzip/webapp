@@ -12,31 +12,17 @@ import (
 
 //const Debug = true
 
-// NewRouter creates a new html router
+// NewRouter creates a new http router
 func NewRouter() *httprouter.Router {
 	router := httprouter.New()
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	return router
 }
 
-func main() {
-	var configfile string
-
-	// get command line arguments
-	flag.StringVar(&configfile, "config", "./config/config.yaml", "Path to configuration file")
-	flag.Parse()
-
-	// read configuration from configfile
-	if err := webapp.ReadConfig(configfile); err != nil {
-		if !os.IsNotExist(err) { // Error for non-existent config file has already been covered in ReadConfig
-			webapp.Logf(webapp.ErrorLevel, "%s\n", err)
-		}
-	}
-
-	webapp.NewApp("WebApp")
-
-	// Create Data Stores
+// SetupDataBackend initializes the data backend, either a postgres db or local yaml files in the data directory
+func SetupDataBackend() {
 	// setup Global user store
+	log.Println("Setting up db connectors...")
 	if webapp.Config.DBConnector == "" || webapp.Config.DBConnector == "files" {
 		// DBConnector isn't set or set to files, so we use the filesystem storage backend
 		// and write yaml files to the data directory
@@ -60,7 +46,7 @@ func main() {
 	} else { // DBConnector is set, so we use the database backend
 		// setup database
 		db, err := webapp.NewPostgresDB(webapp.Config.DBConnector)
-		defer db.Close()
+		//defer db.Close() --- cannot close in this func or database calls outside will be against a closed db
 
 		if err != nil {
 			log.Fatalf("Error creating new Database: %s\n", err)
@@ -71,12 +57,36 @@ func main() {
 		webapp.GlobalUserConfigStore = webapp.NewDBUserConfigStore()
 		webapp.GlobalSessionStore = webapp.NewDBSessionStore()
 	}
+}
+
+func main() {
+	var configfile string
+
+	// get command line arguments
+	flag.StringVar(&configfile, "config", "./config/config.yaml", "Path to configuration file")
+	flag.Parse()
+
+	// read configuration from configfile
+	log.Println("Reading configuration file...")
+	if err := webapp.ReadConfig(configfile); err != nil {
+		if !os.IsNotExist(err) { // Error for non-existent config file has already been covered in ReadConfig
+			log.Printf("%s\n", err)
+		}
+	}
+
+	webapp.NewApp("WebApp")
+	defer webapp.Logfile.Close()
+
+	// Create Data Stores
+	SetupDataBackend()
+	defer webapp.GlobalPostgresDB.Close()
 	webapp.Logln(webapp.InfoLevel, "Backend Storages created")
 
 	// Create Admin account if needed
 	webapp.CreateAdminAccount()
 
 	// setup the public multiplexer
+	log.Println("Setting up routers...")
 	router := NewRouter()
 	router.GET("/", webapp.HandleHome)
 
