@@ -1,0 +1,11 @@
+hello: "Hallo!"
+welcome: "Willkommen bei der WebApp!"
+cats:
+  one: "{{.Name}} hat {{.Count}} Katze."
+  other: "{{.Name}} hat {{.Count}} Katzen."
+TitleEditUser: Benutzer bearbeiten
+TitleNewUser: Benutzer anlegen
+TitleListUsers: Benutzer
+TitleEditSettings: Einstellungen
+TitleMain: WebApp
+TitleLogin: Anmeldung

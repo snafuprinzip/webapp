@@ -140,7 +140,7 @@ func FindUser(username, password string) (*User, error) {
 }
 
 // UpdateUser updates the User's email address and, if the current password matches, the password
-func UpdateUser(user *User, username, email, currentPassword, newPassword string) (User, error) {
+func UpdateUser(user *User, username, email, currentPassword, newPassword string, admin bool) (User, error) {
 	var lang string = "en"
 
 	// make a shallow copy of the user and set email
@@ -164,16 +164,18 @@ func UpdateUser(user *User, username, email, currentPassword, newPassword string
 	user.Email = email
 	user.Username = username
 
-	// don't update password if existing password is empty
-	if currentPassword == "" {
-		return out, nil
-	}
+	if !admin {
+		// don't update password if existing password is empty
+		if currentPassword == "" {
+			return out, nil
+		}
 
-	if bcrypt.CompareHashAndPassword(
-		[]byte(user.HashedPassword),
-		[]byte(currentPassword),
-	) != nil {
-		return out, errPasswordIncorrect[lang]
+		if bcrypt.CompareHashAndPassword(
+			[]byte(user.HashedPassword),
+			[]byte(currentPassword),
+		) != nil {
+			return out, errPasswordIncorrect[lang]
+		}
 	}
 
 	if newPassword == "" {
@@ -187,7 +189,8 @@ func UpdateUser(user *User, username, email, currentPassword, newPassword string
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), hashCost)
 	user.HashedPassword = string(hashedPassword)
 
-	return out, err
+	return *user, err
+	//return out, err
 }
 
 /****************************************
@@ -304,10 +307,11 @@ func HandleUserUpdate(w http.ResponseWriter, r *http.Request, params httprouter.
 	currentPassword := r.FormValue("currentPassword")
 	newPassword := r.FormValue("newPassword")
 
-	u, err := UpdateUser(user, username, email, currentPassword, newPassword)
+	u, err := UpdateUser(user, username, email, currentPassword, newPassword, currentUser.ID == "admin")
 	user = &u
 	if err != nil {
 		if IsValidationError(err) {
+			fmt.Println(err)
 			RenderTemplate(w, r, "users/edit", map[string]interface{}{
 				"Pagetitle": "EditUser",
 				"User":      user,
